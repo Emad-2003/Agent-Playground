@@ -217,19 +217,19 @@ Owns:
 
 ```mermaid
 flowchart LR
-	U[User] --> TUI[Bubble Tea TUI\ntranscript | tasks | composer | approvals]
-	TUI --> APP[App Controller\nHandlePrompt | ResolveApproval | runPlan]
-	APP --> BUS[Event Bus\nstatus | transcript | tasks | approvals]
+	U[User] --> TUI[Bubble Tea TUI<br/>transcript<br/>tasks<br/>composer<br/>approvals]
+	TUI --> APP[App Controller<br/>HandlePrompt<br/>ResolveApproval<br/>runPlan]
+	APP --> BUS[Event Bus<br/>status<br/>transcript<br/>tasks<br/>approvals]
 	BUS --> TUI
-	APP --> SESS[Session Manager\ntranscript | active tasks]
-	APP --> ORCH[Planner + Queue\nplan | dependency scheduling]
+	APP --> SESS[Session Manager<br/>transcript<br/>active tasks]
+	APP --> ORCH[Planner + Queue<br/>plan<br/>dependency scheduling]
 	ORCH --> APP
-	APP --> ROUTER[Provider Router\norchestrator | worker]
+	APP --> ROUTER[Provider Router<br/>orchestrator<br/>worker]
 	ROUTER --> P1[Mock Provider]
 	ROUTER --> P2[OpenAI-compatible]
 	ROUTER --> P3[Anthropic]
 	APP --> RT[Runtime Engine]
-	RT --> TOOLS[Workspace Tools\nread | write | list | grep | shell]
+	RT --> TOOLS[Workspace Tools<br/>read<br/>write<br/>list<br/>grep<br/>shell]
 	TOOLS --> FS[Workspace Filesystem / Shell]
 	APP --> LOG[Structured Logger]
 	APP --> CFG[Config + Typed Errors]
