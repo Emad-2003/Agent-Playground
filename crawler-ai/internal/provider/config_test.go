@@ -4,10 +4,9 @@ import (
 	"testing"
 
 	"crawler-ai/internal/config"
-	apperrors "crawler-ai/internal/errors"
 )
 
-func TestConfigValidationRequiresProviderCredentialsForRemoteModels(t *testing.T) {
+func TestConfigValidationAllowsRemoteProvidersWithoutInlineCredentials(t *testing.T) {
 	t.Parallel()
 
 	err := (config.Config{
@@ -19,10 +18,7 @@ func TestConfigValidationRequiresProviderCredentialsForRemoteModels(t *testing.T
 			Worker:       config.ProviderConfig{Provider: "mock", Model: "worker"},
 		},
 	}).Validate()
-	if err == nil {
-		t.Fatal("expected validation error")
-	}
-	if !apperrors.IsCode(err, apperrors.CodeInvalidConfig) {
-		t.Fatalf("expected invalid config error, got %v", err)
+	if err != nil {
+		t.Fatalf("expected config validation to pass, got %v", err)
 	}
 }

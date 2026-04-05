@@ -11,9 +11,15 @@ const (
 	EventAppStarted        = "app.started"
 	EventStatusUpdated     = "status.updated"
 	EventTranscriptAdded   = "transcript.added"
+	EventTranscriptUpdated = "transcript.updated"
+	EventTranscriptReset   = "transcript.reset"
 	EventTasksUpdated      = "tasks.updated"
 	EventApprovalRequested = "approval.requested"
 	EventApprovalCleared   = "approval.cleared"
+	EventTokenUsage        = "token.usage"
+	EventSessionChanged    = "session.changed"
+	EventStreamDelta       = "stream.delta"
+	EventSessionBusy       = "session.busy"
 )
 
 type Event struct {

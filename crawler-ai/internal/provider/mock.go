@@ -30,7 +30,9 @@ func (m *Mock) Complete(_ context.Context, request Request) (Response, error) {
 	}
 
 	return Response{
-		Text: text,
+		Text:         text,
+		Content:      []ContentBlock{TextBlock(text)},
+		FinishReason: "stop",
 		Usage: Usage{
 			InputTokens:  len(strings.Fields(latest)),
 			OutputTokens: len(strings.Fields(text)),

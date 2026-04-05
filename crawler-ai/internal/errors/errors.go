@@ -8,12 +8,13 @@ import (
 type Code string
 
 const (
-	CodeInvalidConfig   Code = "invalid_config"
-	CodeInvalidArgument Code = "invalid_argument"
-	CodeProviderFailed  Code = "provider_failed"
-	CodePathViolation   Code = "path_violation"
-	CodeStartupFailed   Code = "startup_failed"
-	CodeToolFailed      Code = "tool_failed"
+	CodeInvalidConfig    Code = "invalid_config"
+	CodeInvalidArgument  Code = "invalid_argument"
+	CodePermissionDenied Code = "permission_denied"
+	CodeProviderFailed   Code = "provider_failed"
+	CodePathViolation    Code = "path_violation"
+	CodeStartupFailed    Code = "startup_failed"
+	CodeToolFailed       Code = "tool_failed"
 )
 
 type Error struct {
