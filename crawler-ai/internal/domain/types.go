@@ -25,16 +25,20 @@ type TranscriptKind string
 const (
 	TranscriptUser      TranscriptKind = "user"
 	TranscriptAssistant TranscriptKind = "assistant"
+	TranscriptReasoning TranscriptKind = "reasoning"
 	TranscriptTool      TranscriptKind = "tool"
 	TranscriptSystem    TranscriptKind = "system"
 )
 
+const TranscriptMetadataResponseID = "response_id"
+
 type TranscriptEntry struct {
-	ID        string
-	Kind      TranscriptKind
-	Message   string
-	CreatedAt time.Time
-	Metadata  map[string]string
+	ID        string            `json:"id"`
+	Kind      TranscriptKind    `json:"kind"`
+	Message   string            `json:"message"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
 }
 
 type Task struct {
@@ -51,6 +55,7 @@ type Task struct {
 
 type ApprovalRequest struct {
 	ID          string
+	ToolCallID  string
 	Action      string
 	Description string
 	CreatedAt   time.Time

@@ -1,11 +1,17 @@
 package config
 
 import (
+	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	apperrors "crawler-ai/internal/errors"
+	"crawler-ai/internal/oauth"
+	"crawler-ai/internal/providercatalog"
 )
 
 type Environment string
@@ -21,6 +27,14 @@ type Config struct {
 	LogLevel      string
 	WorkspaceRoot string
 	Models        ModelConfig
+	RecentModels  RecentModelsConfig
+	Yolo          bool
+	Permissions   PermissionsConfig
+}
+
+type PermissionsConfig struct {
+	AllowedTools  []string
+	DisabledTools []string
 }
 
 type ModelConfig struct {
@@ -28,11 +42,26 @@ type ModelConfig struct {
 	Worker       ProviderConfig
 }
 
+type RecentModel struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	BaseURL  string `json:"base_url,omitempty"`
+}
+
+type RecentModelsConfig struct {
+	Orchestrator []RecentModel `json:"orchestrator,omitempty"`
+	Worker       []RecentModel `json:"worker,omitempty"`
+}
+
 type ProviderConfig struct {
-	Provider string
-	Model    string
-	BaseURL  string
-	APIKey   string
+	Provider        string
+	Model           string
+	BaseURL         string
+	APIKey          string
+	OAuthToken      *oauth.Token
+	ExtraHeaders    map[string]string
+	ExtraBody       map[string]any
+	ProviderOptions map[string]any
 }
 
 func DefaultModelConfig() ModelConfig {
@@ -148,20 +177,18 @@ func validateProviderConfig(role string, cfg ProviderConfig) error {
 		return apperrors.New("config.validateProviderConfig", apperrors.CodeInvalidConfig, role+" model must not be empty")
 	}
 
-	switch provider {
-	case "mock":
-		return nil
-	case "anthropic", "openai":
-		if strings.TrimSpace(cfg.BaseURL) == "" {
+	definition, ok := providercatalog.Get(provider)
+	if !ok {
+		return apperrors.New("config.validateProviderConfig", apperrors.CodeInvalidConfig, role+" provider is not registered: "+provider)
+	}
+
+	if definition.RequiresBaseURL && strings.TrimSpace(cfg.BaseURL) == "" {
+		if strings.TrimSpace(definition.DefaultBaseURL) == "" {
 			return apperrors.New("config.validateProviderConfig", apperrors.CodeInvalidConfig, role+" base URL must not be empty for provider "+provider)
 		}
-		if strings.TrimSpace(cfg.APIKey) == "" {
-			return apperrors.New("config.validateProviderConfig", apperrors.CodeInvalidConfig, role+" API key must not be empty for provider "+provider)
-		}
-		return nil
-	default:
-		return apperrors.New("config.validateProviderConfig", apperrors.CodeInvalidConfig, role+" provider must be mock, anthropic, or openai")
 	}
+
+	return nil
 }
 
 func parseProviderName(raw, fallback string) string {
@@ -178,4 +205,77 @@ func defaultString(raw, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func (cfg ProviderConfig) TestConnection(ctx context.Context, store *oauth.KeyStore) error {
+	providerID := strings.ToLower(strings.TrimSpace(cfg.Provider))
+	if providerID == "" {
+		return apperrors.New("config.ProviderConfig.TestConnection", apperrors.CodeInvalidConfig, "provider must not be empty")
+	}
+
+	definition, ok := providercatalog.Get(providerID)
+	if !ok {
+		return apperrors.New("config.ProviderConfig.TestConnection", apperrors.CodeInvalidConfig, "provider is not registered: "+cfg.Provider)
+	}
+	if providerID == "mock" {
+		return nil
+	}
+
+	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	if baseURL == "" {
+		baseURL = strings.TrimRight(definition.DefaultBaseURL, "/")
+	}
+
+	apiKey := strings.TrimSpace(cfg.APIKey)
+	if cfg.OAuthToken != nil && strings.TrimSpace(cfg.OAuthToken.AccessToken) != "" {
+		apiKey = strings.TrimSpace(cfg.OAuthToken.AccessToken)
+	}
+	apiKey = strings.TrimSpace(oauth.ResolveProviderKey(store, providerID, apiKey))
+
+	if definition.RequiresBaseURL && baseURL == "" {
+		return apperrors.New("config.ProviderConfig.TestConnection", apperrors.CodeInvalidConfig, "provider base URL must not be empty: "+providerID)
+	}
+	if definition.RequiresAPIKey && apiKey == "" {
+		return apperrors.New("config.ProviderConfig.TestConnection", apperrors.CodeInvalidConfig, "provider API key must not be empty: "+providerID)
+	}
+
+	headers := cloneStringMap(cfg.ExtraHeaders)
+	testURL := ""
+	switch providerID {
+	case "openai":
+		testURL = baseURL + "/models"
+		headers["Authorization"] = "Bearer " + apiKey
+	case "anthropic":
+		testURL = baseURL + "/models"
+		headers["x-api-key"] = apiKey
+		headers["anthropic-version"] = "2023-06-01"
+	default:
+		return fmt.Errorf("provider validation is not supported for %s yet", providerID)
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, testURL, nil)
+	if err != nil {
+		return fmt.Errorf("create validation request: %w", err)
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("provider validation failed for %s: %w", providerID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("provider %s returned status %d during validation", providerID, resp.StatusCode)
+	}
+
+	return nil
 }

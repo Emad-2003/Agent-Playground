@@ -64,6 +64,25 @@ func TestValidateRejectsMissingWorkspaceRoot(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsUnknownProvider(t *testing.T) {
+	err := Config{
+		Env:           EnvDevelopment,
+		LogLevel:      "info",
+		WorkspaceRoot: t.TempDir(),
+		Models: ModelConfig{
+			Orchestrator: ProviderConfig{Provider: "gemini", Model: "gemini-pro"},
+			Worker:       ProviderConfig{Provider: "mock", Model: "mock-worker-v1"},
+		},
+	}.Validate()
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+
+	if !apperrors.IsCode(err, apperrors.CodeInvalidConfig) {
+		t.Fatalf("expected invalid config code, got %v", err)
+	}
+}
+
 func TestLoadFromEnvUsesWorkingDirectoryFallback(t *testing.T) {
 	root := t.TempDir()
 	previous := lookupWorkingDirectory

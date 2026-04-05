@@ -1,0 +1,15 @@
+*.exe
+*.log
+*.out
+*.test
+.crawler-ai/
+.vscode/
+/crwlr
+/crwlr.exe
+openaiapi.txt
+geminiapi.txt
+plan.md
+APPLICATION_SURFACE.md
+PRODUCT_STATUS_SUMMARY.md
+TRACK_*.md
+WORKING_ARCHITECTURE_FLOW.md
